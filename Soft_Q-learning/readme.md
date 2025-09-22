@@ -8,7 +8,7 @@
   * **State s** ：当前用户状态（用户画像 + 最近session/action 序列 + 上下文）
   * **Memory M (case bank)** ：历史交互的case 集合，每个 case c = (s_i, item_i, outcome_i)（或更丰富的 prompt 模板 + 举例）。这相当于 Memento 的 “cases”
   * **Action a** ：在 Memento 里，动作是“从 Memory 中检索一个 case c”；这里我们把动作集合视为 `cases`（或者在实际推荐中可以是“先检索 case，再让 frozen LLM 生成 item/推荐”）
-  * **Policy µ(c | s, M)** ：检索策略—对于当前 s，从 M 中选择哪个 case c 作为 prompt/示例（这里可以理解为in-context learning）。我们用 **Soft Q-Learning 来学习这个 µ**
+  * **Policy µ(c | s, M)** ：检索策略—对于当前 s，从 M 中选择哪个 case c（检索哪个 case c 要用神经网络“学习”的） 作为 prompt/示例（这里可以理解为in-context learning）。我们用 **Soft Q-Learning 来学习这个 µ**, 这就是所谓的case-retrieval policy（即决定检索哪个 past case 作为参考）；
   * **Reward r** ：用户对推荐的反馈（比如点击=1，未点=0，或更连续的收益如停留时长/付费）
   * **Objective** ：最大化累积 reward + 熵项（MaxEnt objective），即既要高收益也要保留一定探索性。Soft Q-Learning / MaxEnt RL 提供了公式与训练办法
 
