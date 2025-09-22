@@ -31,7 +31,7 @@ class SoftQAgent:
         """
         state_vec: torch.tensor (state_dim,) or (B,state_dim)
         candidate_idxs: list/np.array of item idxs (K,)
-        返回选中的 item idx, 以及 probs（用于日志）
+        根据state和剩余的item，返回选中的 item idx, 以及 probs（用于日志）
         """
         device = DEVICE
         state = state_vec.unsqueeze(0).to(device) if state_vec.dim()==1 else state_vec.to(device)
@@ -44,13 +44,19 @@ class SoftQAgent:
         return int(candidate_idxs[sel]), probs.detach().cpu().numpy(), q_scores.detach().cpu().numpy()
 
     def push_transition(self, s_vec, chosen_item_idx, reward, s_next_vec, next_cand_idxs):
-        # store the embedding of chosen item & next candidate embs for stable target computation
+        """
+        store the embedding of chosen item & next candidate embs in replay buffer
+        """
         chosen_emb = self.item_emb(torch.tensor(chosen_item_idx, device=DEVICE)).detach().cpu()
         next_cands = torch.tensor(next_cand_idxs, device=DEVICE, dtype=torch.long)
         next_cand_embs = self.item_emb(next_cands).detach().cpu()  # (K,D)
         self.replay.push((s_vec.cpu(), chosen_item_idx, chosen_emb.cpu(), float(reward), s_next_vec.cpu(), next_cand_embs.cpu()))
 
     def update(self, batch_size=BATCH_SIZE):
+        """
+        从replay buffer抽取batch size个sample更新policy model
+
+        """
         if len(self.replay) < batch_size:
             return None
         batch = self.replay.sample(batch_size)
@@ -63,14 +69,16 @@ class SoftQAgent:
         s_next = torch.stack([b[4] for b in batch]).to(DEVICE)      # (B, state_dim)
         next_cand_embs = torch.stack([b[5] for b in batch]).to(DEVICE)  # (B, K, D)
 
-        # current Q for chosen items
+        # 当前状态 s 对所选动作 a 的 Q 预测
         q_pred = self.qnet(s_bs, chosen_embs)  # (B,)
 
-        # compute V(s') = alpha * logsumexp(Q_target(s', c') / alpha)
+        # 下一状态 s' 下所有候选动作的 Q 值
         q_next_all = self.qnet_target(s_next, next_cand_embs)  # (B, K)
+        # 计算 V(s') = α logsumexp(Q/α)
         v_next = soft_value_from_q(q_next_all, self.alpha)     # (B,)
-
+        # TD 目标
         y = r_bs + self.gamma * v_next
+        # MSE(Qθ(s, a), y)
         loss = F.mse_loss(q_pred, y.detach())
 
         self.opt.zero_grad()

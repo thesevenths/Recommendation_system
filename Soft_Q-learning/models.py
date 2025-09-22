@@ -14,7 +14,7 @@ class ItemEmbedding(nn.Module):
 
 class QNetwork(nn.Module):
     """
-    Q(s, item) -> scalar
+    Q(s, item) -> scalar    state是user+history组成；这里计算user使用item的reward/概率
     state: we'll use concatenation of user_emb and history_emb (STATE_DIM)
     item_emb: EMBED_DIM
     """
@@ -24,6 +24,12 @@ class QNetwork(nn.Module):
         self.fc2 = nn.Linear(hidden, hidden)
         self.out = nn.Linear(hidden, 1)
     def forward(self, state, item_emb):
+        """
+        B: batch size
+        K: candidates item 的数量，这里是 “Top-K”
+        D: item embedding
+        S: state embedding
+        """
         # state: (B, state_dim)
         # item_emb: (B, item_dim) or (B, K, item_dim)
         if item_emb.dim() == 3:
