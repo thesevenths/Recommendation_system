@@ -1,4 +1,4 @@
-近期，有研究员发布了论文：Memento: Fine-tuning LLM Agents without Fine-tuning LLMs，详见：https://arxiv.org/pdf/2508.16153   https://github.com/Agent-on-the-Fly/Memento ，核心思路其实和RAG是一样的：**user提问后，从case bank找到最接近的case，然后用LLM生成答案返回给user**！不同的地方在于recall后的处理方式：
+一、近期，有研究员发布了论文：Memento: Fine-tuning LLM Agents without Fine-tuning LLMs，详见：https://arxiv.org/pdf/2508.16153   https://github.com/Agent-on-the-Fly/Memento ，核心思路其实和RAG是一样的：**user提问后，从case bank找到最接近的case，然后用LLM生成答案返回给user**！不同的地方在于recall后的处理方式：
 
 * 传统的RAG在retrieve后还会继续rerank，把和query接近的答案排在前面。rerank的
 
@@ -22,3 +22,25 @@
 * **在线更新（核心）** ：把 transition 存 replay buffer，按 Eq.(8) 或 Eq.(24) 构造 TD 目标 y=r+γαlog⁡∑c′exp⁡(Q(s′,M′,c′)/α)y=r+\gamma \alpha \log\sum_{c'}\exp(Q(s',M',c')/\alpha)**y**=**r**+**γ**α**lo**g**∑**c**′****exp**(**Q**(**s**′**,**M**′**,**c**′**)**/**α**)，最小化 MSE(Q(s,c), y)，并使用 target network / Polyak 平滑。
 
 测试数据集：https://tianchi.aliyun.com/dataset/140281
+
+
+二、这里用的是soft Q-learning，和传统的Q-learning相比多了soft，这个soft该怎么理解？
+
+1、**目标函数的差异** ：
+
+* **传统 Q-Learning** ：目标是最大化预期累积奖励（expected cumulative reward），即找到一个策略 π 来 max ∑ E[r_t]，其中 r_t 是每个时间步的奖励。Q 值（Q(s,a)）表示在状态 s 下选择行动 a 的预期长期回报，更新公式为 Q(s,a) ← Q(s,a) + α [r + γ max_a' Q(s',a') - Q(s,a)]（TD 更新）。**policy通常是贪婪的（总是选 max Q 的行动）或 ε-greedy（以 ε 概率随机探索）**。
+* **Soft Q-Learning** ：目标是最大化预期奖励  **加上策略的熵** ，即 max ∑ E[r_t + α H(π(.|s))]，其中 H(π) = -∑ π(a|s) log π(a|s) 是策略的熵，**α 是温度参数（控制随机性）。这鼓励策略更“软”（soft），不总是选最佳行动，而是保持多样性**。Q 更新类似，但目标值变为 r + γ [α log ∑ exp(Q(s',a')/α)]（soft value，引入 logsumexp 来计算软化的最大值）。
+
+   **本质** ：**传统 Q-Learning 是“确定性”的（deterministic），追求最优路径；Soft Q-Learning 是“随机性”的（stochastic），追求鲁棒性和探索，防止代理过早收敛到次优解**，尤其在不确定或高维环境中（如连续行动空间）。
+
+2、**Policy Derivation 的差异** ：
+
+* **传统** ：策略 π(a|s) = argmax_a Q(s,a)（贪婪），或 ε-greedy（随机均匀探索）。
+* **Soft** ：策略 π(a|s) = exp(Q(s,a)/α) / ∑ exp(Q(s,a')/α)（softmax），概率正比于 Q 值指数，α 大时更随机（均匀分布），α 小时接近贪婪。
+
+    ![1758549529833](image/readme/1758549529833.png)
+
+3、优势与适用场景：
+
+* 传统：简单高效，但容易卡在局部最优（缺乏多样探索），适合离散、低不确定环境。
+* Soft：更鲁棒，泛化好，适合噪声大、连续行动或长期规划场景（如机器人或游戏），但计算稍复杂（需 softmax/logsumexp）。
