@@ -33,7 +33,7 @@
 
    **本质** ：**传统 Q-Learning 是“确定性”的（deterministic），追求最优路径；Soft Q-Learning 是“随机性”的（stochastic），追求鲁棒性和探索，防止代理过早收敛到次优解**，尤其在不确定或高维环境中（如连续行动空间）。
 
-2、**Policy Derivation 的差异** ：
+2、**Policy Derivation 的差异** ：  
 
 * **传统** ：策略 π(a|s) = argmax_a Q(s,a)（贪婪），或 ε-greedy（随机均匀探索）。
 * **Soft** ：策略 π(a|s) = exp(Q(s,a)/α) / ∑ exp(Q(s,a')/α)（softmax），概率正比于 Q 值指数，α 大时更随机（均匀分布），α 小时接近贪婪。
