@@ -55,7 +55,6 @@ class SoftQAgent:
     def update(self, batch_size=BATCH_SIZE):
         """
         从replay buffer抽取batch size个sample更新policy model
-
         """
         if len(self.replay) < batch_size:
             return None
